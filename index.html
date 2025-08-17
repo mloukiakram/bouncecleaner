@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Domain Cleaner V7 — Final Features</title>
+  <title>Domain Cleaner V9 — Sorting & UI Fix</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -76,6 +76,7 @@
     .btn.danger { background: var(--error-red); }
     .btn.danger:hover { background: var(--error-red-hover); }
     .btn.small { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+    .btn:disabled { background: var(--secondary-gray); color: var(--muted-text); cursor: not-allowed; transform: none; box-shadow: none; }
 
     .meta { font-size: 0.8rem; color: var(--muted-text); margin-top: 1rem; }
     .stats { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
@@ -87,16 +88,27 @@
     
     /* --- Server Table Styles --- */
     .server-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    .server-table th, .server-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    /* MODIFICATION: Border applied to TR instead of TD for consistent lines */
+    .server-table tr { border-bottom: 1px solid var(--border-color); }
+    .server-table th, .server-table td { padding: 1rem; text-align: left; vertical-align: middle; }
     .server-table th { font-weight: 600; font-size: 0.75rem; text-transform: uppercase; color: var(--muted-text); letter-spacing: 0.05em; }
+    .server-table th.sortable { cursor: pointer; }
+    .server-table th.sortable:hover { color: var(--text-color); }
+    .sort-indicator { display: inline-block; width: 1em; margin-left: 0.5em; color: var(--primary-blue); }
+
     .server-table th.actions-header { text-align: right; }
     .server-table td { font-size: 0.9rem; }
-    .server-table tr:last-child td { border-bottom: none; }
+    .server-table tr:last-child { border-bottom: none; }
     .server-table tr.loaded { background-color: #eff6ff; font-weight: 500; }
     .server-table tr.loaded td:first-child { border-left: 3px solid var(--primary-blue); }
     .server-table .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
     .no-servers-message { text-align: center; color: var(--muted-text); padding: 2rem; }
     .btn svg { width: 14px; height: 14px; }
+    
+    /* --- Pagination Styles --- */
+    .pagination-controls { display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border-color); }
+    .pagination-info { font-size: 0.9rem; color: var(--muted-text); }
+    .pagination-buttons { display: flex; gap: 0.5rem; }
 
     /* --- Modal Styles --- */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 20, 0.6); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 10000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
@@ -111,7 +123,7 @@
     .server-modal { max-width: 800px; }
     .results-modal-content { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; overflow: hidden; flex-grow: 1; }
 
-    /* --- NEW: Advanced Options Styles --- */
+    /* --- Advanced Options Styles --- */
     .advanced-options { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; }
     .advanced-options label { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; font-size: 0.9rem; cursor: pointer; }
 
@@ -127,7 +139,7 @@
 <body>
   <header class="header">
     <h1>Bounce Domain Cleaner</h1>
-    <p class="lead">A tool to manage your servers and keep your domain lists bounce free.</p>
+    <p class="lead">A powerful tool to manage your servers and keep your domain lists pristine.</p>
   </header>
   
   <main class="wrap">
@@ -136,27 +148,33 @@
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
             <h2 style="margin:0; font-size: 1.25rem;">Your Servers</h2>
             <div style="display: flex; gap: 0.5rem;">
-                <!-- NEW: Import/Export Buttons -->
                 <button id="import-btn" class="btn secondary small">Import</button>
                 <input type="file" id="import-file" accept=".json" style="display: none;">
                 <button id="export-btn" class="btn secondary small">Export</button>
                 <button id="add-server-btn" class="btn small">Add Server</button>
             </div>
         </div>
-        <!-- NEW: Search Bar -->
         <input type="text" id="search-bar" placeholder="Search servers by name or IP..." style="margin-top: 1rem;">
         <div class="server-table-wrapper">
             <table class="server-table">
-                <thead>
+                <thead id="server-table-head">
                     <tr>
-                        <th>Server Name (Envoi)</th>
+                        <!-- NEW: Added sortable class and data-sort attribute -->
+                        <th class="sortable" data-sort="name">Server Name <span class="sort-indicator"></span></th>
                         <th>IPs</th>
-                        <th>Domains</th>
+                        <th class="sortable" data-sort="domains">Domains <span class="sort-indicator"></span></th>
                         <th class="actions-header">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="server-table-body"></tbody>
             </table>
+        </div>
+        <div class="pagination-controls" id="pagination-controls">
+            <span class="pagination-info" id="pagination-info"></span>
+            <div class="pagination-buttons">
+                <button id="prev-page-btn" class="btn secondary small">Previous</button>
+                <button id="next-page-btn" class="btn secondary small">Next</button>
+            </div>
         </div>
       </div>
       
@@ -179,7 +197,6 @@
             <button id="preview" class="btn secondary small">Preview</button>
             <button id="clearRemove" class="btn secondary small">Clear</button>
           </div>
-          <!-- NEW: Advanced Cleaning Options -->
           <div class="advanced-options">
             <label><input type="checkbox" id="deduplicate-master">Deduplicate master list</label>
           </div>
@@ -200,7 +217,7 @@
   <div class="modal-overlay" id="notificationModalOverlay"><div class="modal notification-modal"><h3 id="modalTitle"></h3><p id="modalMessage"></p></div></div>
   <div class="modal-overlay" id="resultsModalOverlay"><div class="modal results-modal"><h3>Cleaning Complete!</h3><div class="results-modal-content"><div class="card" style="box-shadow:none;"><label>Kept Domains <span id="kept-count"></span></label><textarea id="results-kept-modal" readonly></textarea><div class="controls"><button id="copyKept" class="btn small">Copy</button><button id="downloadKept" class="btn secondary small">Download</button></div></div><div class="card" style="box-shadow:none;"><label>Removed Domains <span id="removed-count"></span></label><textarea id="results-removed-modal" readonly></textarea><div class="controls"><button id="copyRemoved" class="btn small">Copy</button><button id="downloadRemoved" class="btn secondary small">Download</button></div></div></div><div class="modal-footer"><button id="resultsModalClose" class="btn secondary">Close</button></div></div></div>
   <div class="modal-overlay" id="previewModalOverlay"><div class="modal" style="max-width:600px;"><h3 id="preview-modal-title">Preview Extracted Domains</h3><p id="preview-modal-subtitle">Unique domains from the 'Bounced' list.</p><textarea id="preview-domains-modal" readonly style="min-height:200px;margin-top:1rem;"></textarea><div class="modal-footer"><button id="copyPreview" class="btn small">Copy</button><button id="previewModalClose" class="btn secondary">Close</button></div></div></div>
-  <div class="modal-overlay" id="serverModalOverlay"><div class="modal server-modal"><h3 id="server-modal-title">Add New Server</h3><form id="server-form" style="margin-top:1.5rem;display:flex;flex-direction:column;gap:1rem;"><input type="hidden" id="server-id-input"><div><label for="server-name-input">Server Name (Envoi)</label><input type="text" id="server-name-input" placeholder="e.g., sl2147" required></div><div class="grid"><div><label for="server-ips-input">IPs (one per line)</label><textarea id="server-ips-input" placeholder="192.168.1.1" style="min-height:150px;" required></textarea></div><div><label for="server-domains-input">Master Domain List</label><textarea id="server-domains-input" placeholder="domain1.com" style="min-height:150px;" required></textarea></div></div><div class="modal-footer"><button type="button" id="serverModalClose" class="btn secondary">Cancel</button><button type="submit" class="btn">Save Server</button></div></form></div></div>
+  <div class="modal-overlay" id="serverModalOverlay"><div class="modal server-modal"><h3 id="server-modal-title">Add New Server</h3><form id="server-form" style="margin-top:1.5rem;display:flex;flex-direction:column;gap:1rem;"><input type="hidden" id="server-id-input"><div><label for="server-name-input">Server Name</label><input type="text" id="server-name-input" placeholder="e.g., sl2147" required></div><div class="grid"><div><label for="server-ips-input">IPs (one per line)</label><textarea id="server-ips-input" placeholder="192.168.1.1" style="min-height:150px;" required></textarea></div><div><label for="server-domains-input">Master Domain List</label><textarea id="server-domains-input" placeholder="domain1.com (Optional)" style="min-height:150px;"></textarea></div></div><div class="modal-footer"><button type="button" id="serverModalClose" class="btn secondary">Cancel</button><button type="submit" class="btn">Save Server</button></div></form></div></div>
   <div class="modal-overlay" id="deleteModalOverlay"><div class="modal notification-modal"><h3>Confirm Deletion</h3><p id="delete-modal-message"></p><div class="modal-footer"><button id="deleteModalCancel" class="btn secondary">Cancel</button><button id="deleteModalConfirm" class="btn danger">Yes, Delete</button></div></div></div>
   <div class="modal-overlay" id="historyModalOverlay"><div class="modal" style="max-width:600px;"><h3>Global Bounce History</h3><p>This is a list of every domain that has ever been removed.</p><textarea id="history-domains-modal" readonly style="min-height:200px;margin-top:1rem;"></textarea><div class="modal-footer"><button id="clearHistoryBtn" class="btn danger small">Clear History</button><button id="copyHistoryBtn" class="btn small">Copy</button><button id="historyModalClose" class="btn secondary">Close</button></div></div></div>
 
@@ -210,14 +227,18 @@
     // --- DOM Elements & State ---
     const domainsBox = el('domains'), removeBox = el('remove'), log = el('log'), stats = el('stats');
     const processBtn = el('process'), addServerBtn = el('add-server-btn'), viewHistoryBtn = el('view-history-btn');
-    const serverTableBody = el('server-table-body'), serverForm = el('server-form');
+    const serverTableHead = el('server-table-head'), serverTableBody = el('server-table-body'), serverForm = el('server-form');
     const searchBar = el('search-bar'), importBtn = el('import-btn'), exportBtn = el('export-btn'), importFile = el('import-file');
     const deduplicateMasterCheckbox = el('deduplicate-master');
-    const STORAGE_KEY = 'domainCleanerDataV7';
+    const paginationControls = el('pagination-controls'), paginationInfo = el('pagination-info'), prevPageBtn = el('prev-page-btn'), nextPageBtn = el('next-page-btn');
+    const STORAGE_KEY = 'domainCleanerDataV8';
     const DOMAIN_REGEX = /^(?!:\/\/)([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,63}$/;
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     let appData = { servers: [], bounceHistory: [] }, currentServerId = null;
     let lastResults = { kept: [], removed: [] };
+    let currentPage = 1, itemsPerPage = 5;
+    // NEW: State for sorting
+    let sortColumn = 'name', sortDirection = 'asc';
 
     // --- UI/UX Functions ---
     let modalTimeout = null;
@@ -252,43 +273,88 @@
     const loadDataFromStorage = () => appData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { servers: [], bounceHistory: [] };
     const saveDataToStorage = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
 
-    // --- Server Management ---
-    function renderServerTable(filter = '') {
+    // --- Server Management, Sorting & Pagination ---
+    function renderServerTable() {
         serverTableBody.innerHTML = '';
-        const searchTerm = filter.toLowerCase();
-        const filteredServers = appData.servers.filter(server => 
+        const searchTerm = searchBar.value.toLowerCase();
+        
+        let filteredServers = appData.servers.filter(server => 
             server.name.toLowerCase().includes(searchTerm) || 
             server.ips.toLowerCase().includes(searchTerm)
         );
 
-        if (filteredServers.length === 0) {
+        // Sorting logic
+        filteredServers.sort((a, b) => {
+            let valA, valB;
+            if (sortColumn === 'name') {
+                valA = a.name.toLowerCase();
+                valB = b.name.toLowerCase();
+            } else if (sortColumn === 'domains') {
+                valA = a.domains.split('\n').filter(Boolean).length;
+                valB = b.domains.split('\n').filter(Boolean).length;
+            }
+
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        const totalPages = Math.ceil(filteredServers.length / itemsPerPage);
+        if (currentPage > totalPages) currentPage = totalPages || 1;
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedServers = filteredServers.slice(startIndex, endIndex);
+
+        if (paginatedServers.length === 0) {
             serverTableBody.innerHTML = `<tr><td colspan="4" class="no-servers-message">No servers found.</td></tr>`;
+        } else {
+            const icon = {
+                load: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" /></svg>`,
+                edit: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>`,
+                copy: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V16.5a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 017 16.5v-13z" /><path d="M5 6.5A1.5 1.5 0 016.5 5h3A.5.5 0 0010 4.5H6.5A2.5 2.5 0 004 7v10.5A2.5 2.5 0 006.5 20h7a2.5 2.5 0 002.5-2.5V16a.5.5 0 00-1 0v1.5a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 015 17.5V6.5z" /></svg>`,
+                del: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4.5a.75.75 0 01.75.75v10.5a.75.75 0 01-1.5 0V5.25A.75.75 0 0110 4.5z" clip-rule="evenodd" /></svg>`
+            };
+            paginatedServers.forEach(server => {
+                const domainCount = server.domains.split('\n').filter(Boolean).length;
+                const ipDisplay = server.ips.split('\n').filter(Boolean).join('<br>') || 'N/A';
+                const row = serverTableBody.insertRow();
+                row.dataset.serverId = server.id;
+                if (server.id === currentServerId) row.classList.add('loaded');
+                row.innerHTML = `
+                    <td>${server.name}</td>
+                    <td>${ipDisplay}</td>
+                    <td>${domainCount}</td>
+                    <td class="actions">
+                        <button class="btn small load-btn" data-id="${server.id}" title="Load Server">${icon.load}</button>
+                        <button class="btn secondary small copy-btn" data-id="${server.id}" title="Copy Domains">${icon.copy}</button>
+                        <button class="btn secondary small edit-btn" data-id="${server.id}" title="Edit Server">${icon.edit}</button>
+                        <button class="btn danger small delete-btn" data-id="${server.id}" title="Delete Server">${icon.del}</button>
+                    </td>
+                `;
+            });
+        }
+        updateSortIndicators();
+        renderPaginationControls(totalPages, filteredServers.length);
+    }
+
+    function updateSortIndicators() {
+        document.querySelectorAll('.sort-indicator').forEach(span => span.textContent = '');
+        const activeHeader = document.querySelector(`th[data-sort="${sortColumn}"] .sort-indicator`);
+        if (activeHeader) {
+            activeHeader.textContent = sortDirection === 'asc' ? '▲' : '▼';
+        }
+    }
+
+    function renderPaginationControls(totalPages, totalItems) {
+        if (totalPages <= 1) {
+            paginationControls.style.display = 'none';
             return;
         }
-        const icon = {
-            load: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" /></svg>`,
-            edit: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>`,
-            copy: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V16.5a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 017 16.5v-13z" /><path d="M5 6.5A1.5 1.5 0 016.5 5h3A.5.5 0 0010 4.5H6.5A2.5 2.5 0 004 7v10.5A2.5 2.5 0 006.5 20h7a2.5 2.5 0 002.5-2.5V16a.5.5 0 00-1 0v1.5a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 015 17.5V6.5z" /></svg>`,
-            del: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4.5a.75.75 0 01.75.75v10.5a.75.75 0 01-1.5 0V5.25A.75.75 0 0110 4.5z" clip-rule="evenodd" /></svg>`
-        };
-        filteredServers.forEach(server => {
-            const domainCount = server.domains.split('\n').filter(Boolean).length;
-            const ipDisplay = server.ips.split('\n').filter(Boolean).join('<br>') || 'N/A';
-            const row = serverTableBody.insertRow();
-            row.dataset.serverId = server.id;
-            if (server.id === currentServerId) row.classList.add('loaded');
-            row.innerHTML = `
-                <td>${server.name}</td>
-                <td>${ipDisplay}</td>
-                <td>${domainCount}</td>
-                <td class="actions">
-                    <button class="btn small load-btn" data-id="${server.id}" title="Load Server">${icon.load}</button>
-                    <button class="btn secondary small copy-btn" data-id="${server.id}" title="Copy Domains">${icon.copy}</button>
-                    <button class="btn secondary small edit-btn" data-id="${server.id}" title="Edit Server">${icon.edit}</button>
-                    <button class="btn danger small delete-btn" data-id="${server.id}" title="Delete Server">${icon.del}</button>
-                </td>
-            `;
-        });
+        paginationControls.style.display = 'flex';
+        paginationInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalItems} items)`;
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages;
     }
     
     function handleTableClick(event) {
@@ -500,6 +566,7 @@
                     if (confirm("Are you sure you want to overwrite all current data with the imported file?")) {
                         appData = importedData;
                         saveDataToStorage();
+                        currentPage = 1;
                         renderServerTable();
                         showNotification('Success', 'Data has been imported successfully.');
                     }
@@ -509,7 +576,7 @@
             } catch (error) {
                 showNotification('Error', 'Could not import data. The file may be corrupt or in the wrong format.');
             } finally {
-                importFile.value = ''; // Reset file input
+                importFile.value = '';
             }
         };
         reader.readAsText(file);
@@ -527,11 +594,41 @@
             el('history-domains-modal').value = appData.bounceHistory.join('\n');
             showModal('historyModalOverlay');
         });
-        searchBar.addEventListener('input', (e) => renderServerTable(e.target.value));
+        searchBar.addEventListener('input', () => {
+            currentPage = 1;
+            renderServerTable();
+        });
         exportBtn.addEventListener('click', exportData);
         importBtn.addEventListener('click', () => importFile.click());
         importFile.addEventListener('change', importData);
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderServerTable();
+            }
+        });
+        nextPageBtn.addEventListener('click', () => {
+            const totalItems = appData.servers.filter(server => server.name.toLowerCase().includes(searchBar.value.toLowerCase()) || server.ips.toLowerCase().includes(searchBar.value.toLowerCase())).length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderServerTable();
+            }
+        });
         
+        serverTableHead.addEventListener('click', (e) => {
+            const header = e.target.closest('th');
+            if (!header || !header.dataset.sort) return;
+            const newSortColumn = header.dataset.sort;
+            if (sortColumn === newSortColumn) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = newSortColumn;
+                sortDirection = 'asc';
+            }
+            renderServerTable();
+        });
+
         el('clearDomains').addEventListener('click', () => currentServerId ? switchToManualMode() : (domainsBox.value = ''));
         el('clearRemove').addEventListener('click', () => removeBox.value = '');
         
