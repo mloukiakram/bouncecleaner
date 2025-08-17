@@ -139,7 +139,7 @@
 <body>
   <header class="header">
     <h1>Bounce Domain Cleaner</h1>
-    <p class="lead">A powerful tool to manage your servers and keep your domain lists pristine.</p>
+    <p class="lead">A tool to manage your servers and keep your domain lists bounce free.</p>
   </header>
   
   <main class="wrap">
@@ -160,7 +160,7 @@
                 <thead id="server-table-head">
                     <tr>
                         <!-- NEW: Added sortable class and data-sort attribute -->
-                        <th class="sortable" data-sort="name">Server Name <span class="sort-indicator"></span></th>
+                        <th class="sortable" data-sort="name">Server Name (Envoi) <span class="sort-indicator"></span></th>
                         <th>IPs</th>
                         <th class="sortable" data-sort="domains">Domains <span class="sort-indicator"></span></th>
                         <th class="actions-header">Actions</th>
@@ -217,7 +217,7 @@
   <div class="modal-overlay" id="notificationModalOverlay"><div class="modal notification-modal"><h3 id="modalTitle"></h3><p id="modalMessage"></p></div></div>
   <div class="modal-overlay" id="resultsModalOverlay"><div class="modal results-modal"><h3>Cleaning Complete!</h3><div class="results-modal-content"><div class="card" style="box-shadow:none;"><label>Kept Domains <span id="kept-count"></span></label><textarea id="results-kept-modal" readonly></textarea><div class="controls"><button id="copyKept" class="btn small">Copy</button><button id="downloadKept" class="btn secondary small">Download</button></div></div><div class="card" style="box-shadow:none;"><label>Removed Domains <span id="removed-count"></span></label><textarea id="results-removed-modal" readonly></textarea><div class="controls"><button id="copyRemoved" class="btn small">Copy</button><button id="downloadRemoved" class="btn secondary small">Download</button></div></div></div><div class="modal-footer"><button id="resultsModalClose" class="btn secondary">Close</button></div></div></div>
   <div class="modal-overlay" id="previewModalOverlay"><div class="modal" style="max-width:600px;"><h3 id="preview-modal-title">Preview Extracted Domains</h3><p id="preview-modal-subtitle">Unique domains from the 'Bounced' list.</p><textarea id="preview-domains-modal" readonly style="min-height:200px;margin-top:1rem;"></textarea><div class="modal-footer"><button id="copyPreview" class="btn small">Copy</button><button id="previewModalClose" class="btn secondary">Close</button></div></div></div>
-  <div class="modal-overlay" id="serverModalOverlay"><div class="modal server-modal"><h3 id="server-modal-title">Add New Server</h3><form id="server-form" style="margin-top:1.5rem;display:flex;flex-direction:column;gap:1rem;"><input type="hidden" id="server-id-input"><div><label for="server-name-input">Server Name</label><input type="text" id="server-name-input" placeholder="e.g., sl2147" required></div><div class="grid"><div><label for="server-ips-input">IPs (one per line)</label><textarea id="server-ips-input" placeholder="192.168.1.1" style="min-height:150px;" required></textarea></div><div><label for="server-domains-input">Master Domain List</label><textarea id="server-domains-input" placeholder="domain1.com (Optional)" style="min-height:150px;"></textarea></div></div><div class="modal-footer"><button type="button" id="serverModalClose" class="btn secondary">Cancel</button><button type="submit" class="btn">Save Server</button></div></form></div></div>
+  <div class="modal-overlay" id="serverModalOverlay"><div class="modal server-modal"><h3 id="server-modal-title">Add New Server</h3><form id="server-form" style="margin-top:1.5rem;display:flex;flex-direction:column;gap:1rem;"><input type="hidden" id="server-id-input"><div><label for="server-name-input">Server Name (Envoi)</label><input type="text" id="server-name-input" placeholder="e.g., sl2147" required></div><div class="grid"><div><label for="server-ips-input">IPs (one per line)</label><textarea id="server-ips-input" placeholder="192.168.1.1" style="min-height:150px;" required></textarea></div><div><label for="server-domains-input">Master Domain List</label><textarea id="server-domains-input" placeholder="domain1.com (Optional)" style="min-height:150px;"></textarea></div></div><div class="modal-footer"><button type="button" id="serverModalClose" class="btn secondary">Cancel</button><button type="submit" class="btn">Save Server</button></div></form></div></div>
   <div class="modal-overlay" id="deleteModalOverlay"><div class="modal notification-modal"><h3>Confirm Deletion</h3><p id="delete-modal-message"></p><div class="modal-footer"><button id="deleteModalCancel" class="btn secondary">Cancel</button><button id="deleteModalConfirm" class="btn danger">Yes, Delete</button></div></div></div>
   <div class="modal-overlay" id="historyModalOverlay"><div class="modal" style="max-width:600px;"><h3>Global Bounce History</h3><p>This is a list of every domain that has ever been removed.</p><textarea id="history-domains-modal" readonly style="min-height:200px;margin-top:1rem;"></textarea><div class="modal-footer"><button id="clearHistoryBtn" class="btn danger small">Clear History</button><button id="copyHistoryBtn" class="btn small">Copy</button><button id="historyModalClose" class="btn secondary">Close</button></div></div></div>
 
