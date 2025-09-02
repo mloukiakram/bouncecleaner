@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Domain Cleaner V10 — Feature Update</title>
+  <title>Domain Cleaner V10.1 — Bug Fix</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -310,7 +310,7 @@
 
         const displayAll = itemsPerPage === 'all';
         const currentItemsPerPage = displayAll ? filteredServers.length : parseInt(itemsPerPage);
-        const totalPages = displayAll ? 1 : Math.ceil(filteredServers.length / currentItemsPerPage);
+        const totalPages = displayAll || currentItemsPerPage === 0 ? 1 : Math.ceil(filteredServers.length / currentItemsPerPage);
         if (currentPage > totalPages) currentPage = totalPages || 1;
 
         const startIndex = (currentPage - 1) * currentItemsPerPage;
@@ -363,14 +363,24 @@
     }
 
     function renderPaginationControls(totalPages, totalItems) {
-        if (totalItems <= itemsPerPage && itemsPerPage !== 'all') {
+        if (totalItems === 0) {
             paginationControls.style.display = 'none';
             return;
         }
+
         paginationControls.style.display = 'flex';
-        paginationInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalItems} items)`;
-        prevPageBtn.disabled = currentPage === 1;
-        nextPageBtn.disabled = currentPage === totalPages;
+        
+        if (totalPages <= 1) {
+            paginationInfo.textContent = `${totalItems} item${totalItems !== 1 ? 's' : ''}`;
+            prevPageBtn.style.display = 'none';
+            nextPageBtn.style.display = 'none';
+        } else {
+            paginationInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalItems} items)`;
+            prevPageBtn.style.display = 'inline-flex';
+            nextPageBtn.style.display = 'inline-flex';
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages;
+        }
     }
     
     function handleTableClick(event) {
@@ -800,3 +810,4 @@ URL.revokeObjectURL(a.href);
   </script>
 </body>
 </html>
+
