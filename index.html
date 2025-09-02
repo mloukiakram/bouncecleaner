@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Domain Cleaner V9 — Sorting & UI Fix</title>
+  <title>Domain Cleaner V10 — Feature Update</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -54,7 +54,7 @@
       flex-direction: column; 
     }
     label { display: block; font-size: 0.875rem; margin-bottom: 0.5rem; color: var(--text-color); font-weight: 500; }
-    textarea, input[type="text"] { 
+    textarea, input[type="text"], select { 
       width: 100%; 
       border: 1px solid var(--border-color); 
       padding: 0.75rem; 
@@ -63,9 +63,10 @@
       font-size: 0.9rem; 
       outline: none; 
       transition: border-color 0.2s, box-shadow 0.2s; 
+      background-color: var(--card-bg);
     }
     textarea { min-height: 180px; resize: vertical; flex-grow: 1; }
-    textarea:focus, input:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2); }
+    textarea:focus, input:focus, select:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2); }
     
     .controls { display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: var(--primary-blue); color: white; border: none; padding: 0.6rem 1.25rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; user-select: none; }
@@ -88,27 +89,28 @@
     
     /* --- Server Table Styles --- */
     .server-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    /* MODIFICATION: Border applied to TR instead of TD for consistent lines */
     .server-table tr { border-bottom: 1px solid var(--border-color); }
     .server-table th, .server-table td { padding: 1rem; text-align: left; vertical-align: middle; }
     .server-table th { font-weight: 600; font-size: 0.75rem; text-transform: uppercase; color: var(--muted-text); letter-spacing: 0.05em; }
     .server-table th.sortable { cursor: pointer; }
     .server-table th.sortable:hover { color: var(--text-color); }
     .sort-indicator { display: inline-block; width: 1em; margin-left: 0.5em; color: var(--primary-blue); }
-
     .server-table th.actions-header { text-align: right; }
     .server-table td { font-size: 0.9rem; }
     .server-table tr:last-child { border-bottom: none; }
     .server-table tr.loaded { background-color: #eff6ff; font-weight: 500; }
     .server-table tr.loaded td:first-child { border-left: 3px solid var(--primary-blue); }
+    .server-table tr.selected { background-color: #fefce8; } /* Yellowish tint for selected */
     .server-table .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
     .no-servers-message { text-align: center; color: var(--muted-text); padding: 2rem; }
     .btn svg { width: 14px; height: 14px; }
+    .checkbox-cell { width: 1%; padding-right: 0; } /* For selection checkbox */
     
     /* --- Pagination Styles --- */
-    .pagination-controls { display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border-color); }
+    .pagination-controls { display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem; }
     .pagination-info { font-size: 0.9rem; color: var(--muted-text); }
-    .pagination-buttons { display: flex; gap: 0.5rem; }
+    .pagination-buttons { display: flex; gap: 0.5rem; align-items: center; }
+    #items-per-page-select { width: auto; padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 
     /* --- Modal Styles --- */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 20, 0.6); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 10000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
@@ -148,6 +150,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
             <h2 style="margin:0; font-size: 1.25rem;">Your Servers</h2>
             <div style="display: flex; gap: 0.5rem;">
+                <button id="delete-selected-btn" class="btn danger small" style="display: none;">Delete Selected</button>
                 <button id="import-btn" class="btn secondary small">Import</button>
                 <input type="file" id="import-file" accept=".json" style="display: none;">
                 <button id="export-btn" class="btn secondary small">Export</button>
@@ -159,7 +162,7 @@
             <table class="server-table">
                 <thead id="server-table-head">
                     <tr>
-                        <!-- NEW: Added sortable class and data-sort attribute -->
+                        <th class="checkbox-cell"><input type="checkbox" id="select-all-servers" title="Select all on this page"></th>
                         <th class="sortable" data-sort="name">Server Name (Envoi) <span class="sort-indicator"></span></th>
                         <th>IPs</th>
                         <th class="sortable" data-sort="domains">Domains <span class="sort-indicator"></span></th>
@@ -172,6 +175,12 @@
         <div class="pagination-controls" id="pagination-controls">
             <span class="pagination-info" id="pagination-info"></span>
             <div class="pagination-buttons">
+                <select id="items-per-page-select">
+                    <option value="5">5 per page</option>
+                    <option value="10">10 per page</option>
+                    <option value="25">25 per page</option>
+                    <option value="all">All</option>
+                </select>
                 <button id="prev-page-btn" class="btn secondary small">Previous</button>
                 <button id="next-page-btn" class="btn secondary small">Next</button>
             </div>
@@ -217,7 +226,7 @@
   <div class="modal-overlay" id="notificationModalOverlay"><div class="modal notification-modal"><h3 id="modalTitle"></h3><p id="modalMessage"></p></div></div>
   <div class="modal-overlay" id="resultsModalOverlay"><div class="modal results-modal"><h3>Cleaning Complete!</h3><div class="results-modal-content"><div class="card" style="box-shadow:none;"><label>Kept Domains <span id="kept-count"></span></label><textarea id="results-kept-modal" readonly></textarea><div class="controls"><button id="copyKept" class="btn small">Copy</button><button id="downloadKept" class="btn secondary small">Download</button></div></div><div class="card" style="box-shadow:none;"><label>Removed Domains <span id="removed-count"></span></label><textarea id="results-removed-modal" readonly></textarea><div class="controls"><button id="copyRemoved" class="btn small">Copy</button><button id="downloadRemoved" class="btn secondary small">Download</button></div></div></div><div class="modal-footer"><button id="resultsModalClose" class="btn secondary">Close</button></div></div></div>
   <div class="modal-overlay" id="previewModalOverlay"><div class="modal" style="max-width:600px;"><h3 id="preview-modal-title">Preview Extracted Domains</h3><p id="preview-modal-subtitle">Unique domains from the 'Bounced' list.</p><textarea id="preview-domains-modal" readonly style="min-height:200px;margin-top:1rem;"></textarea><div class="modal-footer"><button id="copyPreview" class="btn small">Copy</button><button id="previewModalClose" class="btn secondary">Close</button></div></div></div>
-  <div class="modal-overlay" id="serverModalOverlay"><div class="modal server-modal"><h3 id="server-modal-title">Add New Server</h3><form id="server-form" style="margin-top:1.5rem;display:flex;flex-direction:column;gap:1rem;"><input type="hidden" id="server-id-input"><div><label for="server-name-input">Server Name (Envoi)</label><input type="text" id="server-name-input" placeholder="e.g., sl2147" required></div><div class="grid"><div><label for="server-ips-input">IPs (one per line)</label><textarea id="server-ips-input" placeholder="192.168.1.1" style="min-height:150px;" required></textarea></div><div><label for="server-domains-input">Master Domain List</label><textarea id="server-domains-input" placeholder="domain1.com (Optional)" style="min-height:150px;"></textarea></div></div><div class="modal-footer"><button type="button" id="serverModalClose" class="btn secondary">Cancel</button><button type="submit" class="btn">Save Server</button></div></form></div></div>
+  <div class="modal-overlay" id="serverModalOverlay"><div class="modal server-modal"><h3 id="server-modal-title">Add New Server</h3><form id="server-form" style="margin-top:1.5rem;display:flex;flex-direction:column;gap:1rem;"><input type="hidden" id="server-id-input"><div><label for="server-name-input">Server Name (Envoi)</label><input type="text" id="server-name-input" placeholder="e.g., sl2147" required></div><div class="grid"><div><label for="server-ips-input">IPs (one per line)</label><textarea id="server-ips-input" placeholder="192.168.1.1" style="min-height:150px;"></textarea></div><div><label for="server-domains-input">Master Domain List</label><textarea id="server-domains-input" placeholder="domain1.com (Optional)" style="min-height:150px;"></textarea></div></div><div class="modal-footer"><button type="button" id="serverModalClose" class="btn secondary">Cancel</button><button type="submit" class="btn">Save Server</button></div></form></div></div>
   <div class="modal-overlay" id="deleteModalOverlay"><div class="modal notification-modal"><h3>Confirm Deletion</h3><p id="delete-modal-message"></p><div class="modal-footer"><button id="deleteModalCancel" class="btn secondary">Cancel</button><button id="deleteModalConfirm" class="btn danger">Yes, Delete</button></div></div></div>
   <div class="modal-overlay" id="historyModalOverlay"><div class="modal" style="max-width:600px;"><h3>Global Bounce History</h3><p>This is a list of every domain that has ever been removed.</p><textarea id="history-domains-modal" readonly style="min-height:200px;margin-top:1rem;"></textarea><div class="modal-footer"><button id="clearHistoryBtn" class="btn danger small">Clear History</button><button id="copyHistoryBtn" class="btn small">Copy</button><button id="historyModalClose" class="btn secondary">Close</button></div></div></div>
 
@@ -231,14 +240,18 @@
     const searchBar = el('search-bar'), importBtn = el('import-btn'), exportBtn = el('export-btn'), importFile = el('import-file');
     const deduplicateMasterCheckbox = el('deduplicate-master');
     const paginationControls = el('pagination-controls'), paginationInfo = el('pagination-info'), prevPageBtn = el('prev-page-btn'), nextPageBtn = el('next-page-btn');
+    const itemsPerPageSelect = el('items-per-page-select');
+    const selectAllCheckbox = el('select-all-servers');
+    const deleteSelectedBtn = el('delete-selected-btn');
+    
     const STORAGE_KEY = 'domainCleanerDataV8';
     const DOMAIN_REGEX = /^(?!:\/\/)([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,63}$/;
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     let appData = { servers: [], bounceHistory: [] }, currentServerId = null;
     let lastResults = { kept: [], removed: [] };
     let currentPage = 1, itemsPerPage = 5;
-    // NEW: State for sorting
     let sortColumn = 'name', sortDirection = 'asc';
+    let selectedServerIds = new Set();
 
     // --- UI/UX Functions ---
     let modalTimeout = null;
@@ -247,7 +260,7 @@
       el('modalMessage').innerHTML = message;
       showModal('notificationModalOverlay');
       clearTimeout(modalTimeout);
-      modalTimeout = setTimeout(() => hideModal('notificationModalOverlay'), 1500);
+      modalTimeout = setTimeout(() => hideModal('notificationModalOverlay'), 2000);
     }
     function showModal(id) { el(id).classList.add('show'); }
     function hideModal(id) { el(id).classList.remove('show'); }
@@ -275,15 +288,12 @@
 
     // --- Server Management, Sorting & Pagination ---
     function renderServerTable() {
-        serverTableBody.innerHTML = '';
         const searchTerm = searchBar.value.toLowerCase();
-        
         let filteredServers = appData.servers.filter(server => 
             server.name.toLowerCase().includes(searchTerm) || 
             server.ips.toLowerCase().includes(searchTerm)
         );
 
-        // Sorting logic
         filteredServers.sort((a, b) => {
             let valA, valB;
             if (sortColumn === 'name') {
@@ -293,21 +303,23 @@
                 valA = a.domains.split('\n').filter(Boolean).length;
                 valB = b.domains.split('\n').filter(Boolean).length;
             }
-
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
 
-        const totalPages = Math.ceil(filteredServers.length / itemsPerPage);
+        const displayAll = itemsPerPage === 'all';
+        const currentItemsPerPage = displayAll ? filteredServers.length : parseInt(itemsPerPage);
+        const totalPages = displayAll ? 1 : Math.ceil(filteredServers.length / currentItemsPerPage);
         if (currentPage > totalPages) currentPage = totalPages || 1;
 
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
+        const startIndex = (currentPage - 1) * currentItemsPerPage;
+        const endIndex = displayAll ? filteredServers.length : startIndex + currentItemsPerPage;
         const paginatedServers = filteredServers.slice(startIndex, endIndex);
 
+        serverTableBody.innerHTML = '';
         if (paginatedServers.length === 0) {
-            serverTableBody.innerHTML = `<tr><td colspan="4" class="no-servers-message">No servers found.</td></tr>`;
+            serverTableBody.innerHTML = `<tr><td colspan="5" class="no-servers-message">No servers found.</td></tr>`;
         } else {
             const icon = {
                 load: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" /></svg>`,
@@ -318,10 +330,14 @@
             paginatedServers.forEach(server => {
                 const domainCount = server.domains.split('\n').filter(Boolean).length;
                 const ipDisplay = server.ips.split('\n').filter(Boolean).join('<br>') || 'N/A';
+                const isSelected = selectedServerIds.has(server.id);
                 const row = serverTableBody.insertRow();
                 row.dataset.serverId = server.id;
                 if (server.id === currentServerId) row.classList.add('loaded');
+                if (isSelected) row.classList.add('selected');
+
                 row.innerHTML = `
+                    <td class="checkbox-cell"><input type="checkbox" class="server-select-checkbox" data-id="${server.id}" ${isSelected ? 'checked' : ''}></td>
                     <td>${server.name}</td>
                     <td>${ipDisplay}</td>
                     <td>${domainCount}</td>
@@ -336,18 +352,18 @@
         }
         updateSortIndicators();
         renderPaginationControls(totalPages, filteredServers.length);
+        updateSelectAllCheckboxState();
+        updateDeleteSelectedButton();
     }
 
     function updateSortIndicators() {
         document.querySelectorAll('.sort-indicator').forEach(span => span.textContent = '');
         const activeHeader = document.querySelector(`th[data-sort="${sortColumn}"] .sort-indicator`);
-        if (activeHeader) {
-            activeHeader.textContent = sortDirection === 'asc' ? '▲' : '▼';
-        }
+        if (activeHeader) activeHeader.textContent = sortDirection === 'asc' ? '▲' : '▼';
     }
 
     function renderPaginationControls(totalPages, totalItems) {
-        if (totalPages <= 1) {
+        if (totalItems <= itemsPerPage && itemsPerPage !== 'all') {
             paginationControls.style.display = 'none';
             return;
         }
@@ -358,13 +374,54 @@
     }
     
     function handleTableClick(event) {
-        const button = event.target.closest('button');
-        if (!button) return;
-        const serverId = button.dataset.id;
-        if (button.classList.contains('load-btn')) loadServer(serverId);
-        else if (button.classList.contains('edit-btn')) openServerModal('edit', serverId);
-        else if (button.classList.contains('delete-btn')) confirmDeleteServer(serverId);
-        else if (button.classList.contains('copy-btn')) copyServerDomains(serverId);
+        const target = event.target;
+        const serverId = target.closest('tr')?.dataset.serverId;
+        if (!serverId) return;
+
+        if (target.matches('.server-select-checkbox')) {
+            toggleServerSelection(parseInt(serverId));
+        } else {
+            const button = target.closest('button');
+            if (!button) return;
+            const id = button.dataset.id;
+            if (button.classList.contains('load-btn')) loadServer(id);
+            else if (button.classList.contains('edit-btn')) openServerModal('edit', id);
+            else if (button.classList.contains('delete-btn')) confirmDeleteServer([id]);
+            else if (button.classList.contains('copy-btn')) copyServerDomains(id);
+        }
+    }
+
+    function toggleServerSelection(serverId) {
+        if (selectedServerIds.has(serverId)) {
+            selectedServerIds.delete(serverId);
+        } else {
+            selectedServerIds.add(serverId);
+        }
+        renderServerTable();
+    }
+
+    function updateSelectAllCheckboxState() {
+        const checkboxes = document.querySelectorAll('.server-select-checkbox');
+        if (checkboxes.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            return;
+        }
+        const visibleIds = [...checkboxes].map(cb => parseInt(cb.dataset.id));
+        const allVisibleSelected = visibleIds.every(id => selectedServerIds.has(id));
+        const someVisibleSelected = visibleIds.some(id => selectedServerIds.has(id));
+
+        selectAllCheckbox.checked = allVisibleSelected;
+        selectAllCheckbox.indeterminate = !allVisibleSelected && someVisibleSelected;
+    }
+    
+    function updateDeleteSelectedButton() {
+        if (selectedServerIds.size > 0) {
+            deleteSelectedBtn.style.display = 'inline-flex';
+            deleteSelectedBtn.textContent = `Delete Selected (${selectedServerIds.size})`;
+        } else {
+            deleteSelectedBtn.style.display = 'none';
+        }
     }
 
     function copyServerDomains(serverId) {
@@ -419,6 +476,10 @@
             ips: el('server-ips-input').value.trim(),
             domains: el('server-domains-input').value.trim(),
         };
+        if (!serverData.name) {
+             showNotification('Error', 'Server Name is required.');
+             return;
+        }
         if (id) {
             const index = appData.servers.findIndex(s => s.id == id);
             if (index > -1) appData.servers[index] = { ...appData.servers[index], ...serverData };
@@ -432,22 +493,41 @@
         showNotification('Success', `Server '${serverData.name}' saved.`);
     }
     
-    function confirmDeleteServer(serverId) {
-        const server = appData.servers.find(s => s.id == serverId);
-        if (!server) return;
-        el('delete-modal-message').innerHTML = `Delete server <strong>${server.name}</strong>? This cannot be undone.`;
-        el('deleteModalConfirm').dataset.serverId = serverId;
+    function confirmDeleteServer(serverIdsToDelete) {
+        const confirmBtn = el('deleteModalConfirm');
+        const messageEl = el('delete-modal-message');
+        
+        confirmBtn.dataset.serverIds = JSON.stringify(Array.from(serverIdsToDelete));
+
+        if (serverIdsToDelete.length === 1) {
+             const server = appData.servers.find(s => s.id == serverIdsToDelete[0]);
+             if(!server) return;
+             messageEl.innerHTML = `Delete server <strong>${server.name}</strong>? This cannot be undone.`;
+        } else {
+             messageEl.innerHTML = `Are you sure you want to delete <strong>${serverIdsToDelete.length}</strong> selected servers? This cannot be undone.`;
+        }
         showModal('deleteModalOverlay');
     }
 
     function executeDelete() {
-        const serverId = el('deleteModalConfirm').dataset.serverId;
-        appData.servers = appData.servers.filter(s => s.id != serverId);
+        const serverIdsToDelete = new Set(JSON.parse(el('deleteModalConfirm').dataset.serverIds).map(Number));
+        
+        appData.servers = appData.servers.filter(s => !serverIdsToDelete.has(s.id));
+        
+        let unloadedManual = false;
+        serverIdsToDelete.forEach(id => {
+            if (currentServerId == id) unloadedManual = true;
+            selectedServerIds.delete(id);
+        });
+
         saveDataToStorage();
-        if (currentServerId == serverId) switchToManualMode();
+        
+        if (unloadedManual) switchToManualMode();
         else renderServerTable();
+        
         hideModal('deleteModalOverlay');
-        showNotification('Deleted', 'The server has been removed.');
+        const plural = serverIdsToDelete.size > 1 ? 's' : '';
+        showNotification('Deleted', `The server${plural} ha${plural ? 've' : 's'} been removed.`);
     }
 
     // --- Core Domain Processing Logic ---
@@ -567,6 +647,7 @@
                         appData = importedData;
                         saveDataToStorage();
                         currentPage = 1;
+                        selectedServerIds.clear();
                         renderServerTable();
                         showNotification('Success', 'Data has been imported successfully.');
                     }
@@ -589,6 +670,11 @@
         serverTableBody.addEventListener('click', handleTableClick);
         serverForm.addEventListener('submit', handleSaveServer);
         el('deleteModalConfirm').addEventListener('click', executeDelete);
+        deleteSelectedBtn.addEventListener('click', () => {
+            if (selectedServerIds.size > 0) {
+                confirmDeleteServer(selectedServerIds);
+            }
+        });
         stats.addEventListener('click', handleStatClick);
         viewHistoryBtn.addEventListener('click', () => {
             el('history-domains-modal').value = appData.bounceHistory.join('\n');
@@ -601,6 +687,13 @@
         exportBtn.addEventListener('click', exportData);
         importBtn.addEventListener('click', () => importFile.click());
         importFile.addEventListener('change', importData);
+        
+        itemsPerPageSelect.addEventListener('change', (e) => {
+            itemsPerPage = e.target.value;
+            currentPage = 1;
+            renderServerTable();
+        });
+        
         prevPageBtn.addEventListener('click', () => {
             if (currentPage > 1) {
                 currentPage--;
@@ -609,7 +702,7 @@
         });
         nextPageBtn.addEventListener('click', () => {
             const totalItems = appData.servers.filter(server => server.name.toLowerCase().includes(searchBar.value.toLowerCase()) || server.ips.toLowerCase().includes(searchBar.value.toLowerCase())).length;
-            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(totalItems / itemsPerPage);
             if (currentPage < totalPages) {
                 currentPage++;
                 renderServerTable();
@@ -618,24 +711,32 @@
         
         serverTableHead.addEventListener('click', (e) => {
             const header = e.target.closest('th');
-            if (!header || !header.dataset.sort) return;
-            const newSortColumn = header.dataset.sort;
-            if (sortColumn === newSortColumn) {
-                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortColumn = newSortColumn;
-                sortDirection = 'asc';
+            if (header && header.dataset.sort) {
+                const newSortColumn = header.dataset.sort;
+                if (sortColumn === newSortColumn) {
+                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortColumn = newSortColumn;
+                    sortDirection = 'asc';
+                }
+                renderServerTable();
+            } else if (e.target.id === 'select-all-servers') {
+                const checkboxes = document.querySelectorAll('.server-select-checkbox');
+                const visibleIds = [...checkboxes].map(cb => parseInt(cb.dataset.id));
+                const allSelected = visibleIds.every(id => selectedServerIds.has(id));
+                visibleIds.forEach(id => {
+                    if (allSelected) selectedServerIds.delete(id);
+                    else selectedServerIds.add(id);
+                });
+                renderServerTable();
             }
-            renderServerTable();
         });
 
         el('clearDomains').addEventListener('click', () => currentServerId ? switchToManualMode() : (domainsBox.value = ''));
         el('clearRemove').addEventListener('click', () => removeBox.value = '');
         
         el('copyDomains').addEventListener('click', () => {
-            if (domainsBox.value) {
-                navigator.clipboard.writeText(domainsBox.value).then(() => showNotification('Copied!', 'Domain list copied to clipboard.'));
-            }
+            if (domainsBox.value) navigator.clipboard.writeText(domainsBox.value).then(() => showNotification('Copied!', 'Domain list copied to clipboard.'));
         });
 
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -677,10 +778,10 @@
                 if (action === 'copy') navigator.clipboard.writeText(content).then(() => showNotification("Copied", `${title} copied.`));
                 else {
                     const a = document.createElement('a');
-                    a.href = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
-                    a.download = filename;
-                    a.click();
-                    URL.revokeObjectURL(a.href);
+a.href = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
+a.download = filename;
+a.click();
+URL.revokeObjectURL(a.href);
                 }
             });
         };
@@ -691,6 +792,7 @@
         setupActionBtn('copyPreview', 'preview-domains-modal', 'copy', 'Preview List');
 
         loadDataFromStorage();
+        itemsPerPage = itemsPerPageSelect.value;
         renderServerTable();
     }
     
